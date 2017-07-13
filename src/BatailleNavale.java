@@ -3,22 +3,19 @@ import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.HashMap;
+import java.util.ArrayList;
 
 /**
  * Created by DavidBoutet on 17-07-10.
  */
 public class BatailleNavale {
-    //instance variables
-    private JFrame frame;
-    private ActionListener btnListener;
-    private HashMap componentMap;
-
-    //class constant
+    //constant
     public final static int WIDTH_FRAME = 600;
     public final static int HEIGHT_FRAME = 580;
     public final static int BTN_WIDTH = 130;
     public final static int BTN_HEIGHT = 30;
+    private static final int ROWS = 8;
+    private static final int COLS = ROWS;
     public final static String LOGOASCII = "" +
             " ____    ____  ______   ____  ____  _      _        ___ \n" +
             "|    \\  /    ||      | /    ||    || |    | |      /  _]\n" +
@@ -36,6 +33,43 @@ public class BatailleNavale {
             "      |  |  ||  |  | \\   / |  |  ||     ||     |          \n" +
             "      |__|__||__|__|  \\_/  |__|__||_____||_____|";
 
+    //frame
+    private JFrame frame;
+    private char[] gridSolution;
+    private Integer shotsRemaining = 0;
+    private Integer shotsToCompleteGame = 0;
+
+    //panel
+    private JPanel topPanel,
+            middlePanel,
+            bottomPanel,
+            gamePanel;
+
+    //button
+    private JButton playBtn;
+    private JButton[][] buttonGrid = new JButton[ROWS][COLS];
+
+    //radio button
+    private JRadioButton btnRadio1 = new JRadioButton("Débutant"),
+                         btnRadio2 = new JRadioButton("Intermédiaire"),
+                         btnRadio3 = new JRadioButton("Expert");
+
+    //button group
+    private ButtonGroup groupBtnRadio;
+
+    //label
+    private JLabel infoBox;
+
+    //textfield
+    private JTextField playerName;
+
+    //event listener
+    private ActionListener eventListener = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent evenement) {
+            eventDispatcher(evenement);
+        }
+    };
 
     public BatailleNavale(){
 
@@ -51,6 +85,7 @@ public class BatailleNavale {
         launchMenu();
     }
 
+    //launch first page
     private void launchMenu(){
         JPanel topPanel = topPanel(),
                middlePanel = middlePanel(),
@@ -60,22 +95,21 @@ public class BatailleNavale {
         frame.getContentPane().add(middlePanel);
         frame.getContentPane().add(bottomPanel);
         frame.setVisible(true);
+        playerName.requestFocusInWindow();
     }
 
+    //top panel
     private JPanel topPanel(){
-        JPanel topPanel = new JPanel(null);
-
+        topPanel = new JPanel(null);
         JLabel difficulty = new JLabel("Niveau: ");
 
         topPanel.setBackground(Color.white);
         topPanel.setBounds(0, 0, WIDTH_FRAME, HEIGHT_FRAME / 4);
+
         //difficulty
         difficulty.setBounds(30, (topPanel.getHeight()/2)-(30/2), 100, 30);
-        topPanel.add(difficulty);
-        final ButtonGroup groupBtnRadio = new ButtonGroup();
-        final JRadioButton btnRadio1 = new JRadioButton("Débutant"),
-                btnRadio2 = new JRadioButton("Intermédiaire"),
-                btnRadio3 = new JRadioButton("Expert");
+
+        groupBtnRadio = new ButtonGroup();
 
         //radio 1
         btnRadio1.setBounds(difficulty.getX()+60, (topPanel.getHeight()/2)-(30/2), BTN_WIDTH, BTN_HEIGHT);
@@ -95,31 +129,34 @@ public class BatailleNavale {
         groupBtnRadio.add(btnRadio3);
 
         //button
-        final JButton btn = new JButton("Jouer");
-        btn.setBounds(btnRadio3.getX() + btnRadio3.getWidth(), btnRadio3.getY(), 100, 30);
-        btn.setForeground(Color.cyan);
+        playBtn = new JButton("Jouer");
+        playBtn.setBounds(btnRadio3.getX() + btnRadio3.getWidth(), btnRadio3.getY(), 100, 30);
+        playBtn.setForeground(Color.cyan);
 
+        //info box
+        infoBox = new JLabel("", SwingConstants.CENTER);
+        infoBox.setOpaque(true);
+        infoBox.setBackground(Color.black);
+        infoBox.setBounds(0, (HEIGHT_FRAME / 4) - 40, WIDTH_FRAME, 40);
+        infoBox.setForeground(Color.white);
+        infoBox.setVisible(false);
+
+
+        topPanel.add(difficulty);
         topPanel.add(btnRadio1);
         topPanel.add(btnRadio2);
         topPanel.add(btnRadio3);
-        topPanel.add(btn);
+        topPanel.add(playBtn);
+        topPanel.add(infoBox);
 
-        btnListener = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evenement) {
-                if (evenement.getSource() == btn){
-
-                }
-            }
-        };
-
-        btn.addActionListener(btnListener);
+        playBtn.addActionListener(eventListener);
 
         return topPanel;
     }
 
+    //middle panel
     private JPanel middlePanel(){
-        JPanel middlePanel = new JPanel(null);
+        middlePanel = new JPanel(null);
         middlePanel.setBackground(Color.white);
         middlePanel.setBounds(0,WIDTH_FRAME/4,WIDTH_FRAME,HEIGHT_FRAME/2);
         JTextArea logo = new JTextArea(LOGOASCII);
@@ -131,28 +168,116 @@ public class BatailleNavale {
         return middlePanel;
     }
 
+    //bottom panel
     private JPanel bottomPanel(){
-        JPanel bottomPanel = new JPanel(null);
+        bottomPanel = new JPanel(null);
         bottomPanel.setBackground(Color.white);
         bottomPanel.setBounds(0, HEIGHT_FRAME / 4 * 3, WIDTH_FRAME, HEIGHT_FRAME / 4);
 
         JLabel name = new JLabel("Nom du joueur: ");
         name.setBounds((WIDTH_FRAME/2-110/2)-50, bottomPanel.getHeight()/2-30/2, 110, 30);
-        JTextArea areaName = new JTextArea();
-        areaName.setBounds(name.getX()+name.getWidth()+10, name.getY(), 150, 30);
-        areaName.setBorder(BorderFactory.createLineBorder(Color.cyan, 1));
-        areaName.setFont(new Font("Courier", Font.BOLD, 24));
-        areaName.requestFocusInWindow();
+        playerName = new JTextField();
+        playerName.setBounds(name.getX()+name.getWidth()+10, name.getY(), 150, 30);
+        playerName.setBorder(BorderFactory.createLineBorder(Color.cyan, 1));
+        playerName.setFont(new Font("Courier", Font.BOLD, 24));
+        playerName.addActionListener(eventListener);
 
         bottomPanel.add(name);
-        bottomPanel.add(areaName);
+        bottomPanel.add(playerName);
         return bottomPanel;
     }
 
-    private void launchGame(){
-
-
+    //return selected difficulty
+    private Integer getSelectedDifficulty(){
+        return btnRadio1.isSelected()?1:btnRadio2.isSelected()?2:btnRadio3.isSelected()?3:0;
     }
+
+    //return player name
+    private String getPlayerName(){
+        return playerName.getText();
+    }
+
+    //action event
+    private void eventDispatcher(ActionEvent e){
+        if (e.getSource() == playBtn || e.getSource() == playerName){
+            if((getPlayerName().length() >= 3 && getPlayerName().length() <= 10) && getSelectedDifficulty() != 0){
+                launchGame();
+            }else {
+                JOptionPane.showMessageDialog(frame, "Nom obligatoire et doit contenir entre 3 et 10 caractères inclusivement.");
+            }
+        }else{
+            int position = 0;
+            for (int row = 0; row < buttonGrid.length; row++) {
+                for (int col = 0; col < buttonGrid[row].length; col++) {
+                    if (buttonGrid[row][col] == e.getSource()) {
+                        checkHit(position, buttonGrid[row][col]);
+                    }
+                    position++;
+                }
+            }
+        }
+    }
+
+    private void launchGame(){
+        infoBox.setText(getPlayerName()+", éxécutez votre premier tir.");
+        infoBox.setVisible(true);
+        middlePanel.setVisible(false);
+        bottomPanel.setVisible(false);
+        shotsRemaining = getSelectedDifficulty()==1?45:getSelectedDifficulty()==2?35:25;
+        setupGame();
+    }
+
+
+    private void setupGame(){
+        JPanel board = new JPanel(null);
+        gamePanel = new JPanel(null);
+        gamePanel.setBackground(Color.red);
+        gamePanel.setBounds(0, HEIGHT_FRAME/4, WIDTH_FRAME, HEIGHT_FRAME-(HEIGHT_FRAME/4));
+        board.setLayout(new GridLayout(8, 8));
+        board.setBounds(0, 0, 300, 300);
+
+        for (int row = 0; row < buttonGrid.length; row++) {
+            for (int col = 0; col < buttonGrid[row].length; col++) {
+                buttonGrid[row][col] = new JButton();
+                buttonGrid[row][col].addActionListener(eventListener);
+                board.add(buttonGrid[row][col]);
+            }
+        }
+
+        gamePanel.add(board);
+        frame.add(gamePanel);
+        gridSolution = JeuUtils.genererGrilleSolution().toCharArray();
+        for (int i = 0; i < gridSolution.length; i++){
+            if(gridSolution[i]=='B'){
+                shotsToCompleteGame++;
+            }
+        }
+    }
+
+    private void checkHit(Integer position, JButton currentButton){
+        if(position <= gridSolution.length){
+            if(shotsRemaining < shotsToCompleteGame){
+                JOptionPane.showMessageDialog(frame, "Il ne reste plus assez de coup pour gagné la partie:(");
+                launchGame();
+            }
+            Character find = gridSolution[position];
+            if(find.equals('B')){
+                currentButton.setText("B");
+                currentButton.setBackground(Color.cyan);
+                currentButton.setOpaque(true);
+                infoBox.setText("Tir réussi!");
+                shotsToCompleteGame--;
+            }else if (find.equals('Z')){
+                println("redondant");
+            }else {
+                currentButton.setText("X");
+                infoBox.setText("Tir manqué!");
+            }
+            gridSolution[position] = 'Z';
+        }
+        shotsRemaining--;
+    }
+
 
 
     public static void println(Object o){
