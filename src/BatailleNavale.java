@@ -1,9 +1,14 @@
+import com.sun.org.apache.xpath.internal.operations.Bool;
+import com.sun.xml.internal.fastinfoset.util.CharArray;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by DavidBoutet on 17-07-10.
@@ -36,14 +41,17 @@ public class BatailleNavale {
     //frame
     private JFrame frame;
     private char[] gridSolution;
+    private char[][] arraySolution = new char[ROWS][COLS];
     private Integer shotsRemaining = 0;
     private Integer shotsToCompleteGame = 0;
+    private Boolean gameStarted = false;
 
     //panel
     private JPanel topPanel,
             middlePanel,
             bottomPanel,
-            gamePanel;
+            gamePanel,
+            grid = new JPanel(null);
 
     //button
     private JButton playBtn;
@@ -197,6 +205,53 @@ public class BatailleNavale {
         return playerName.getText();
     }
 
+    private void launchGame(){
+        gamePanel = new JPanel(null);
+        infoBox.setText(getPlayerName()+", éxécutez votre premier tir.");
+        infoBox.setVisible(true);
+        middlePanel.setVisible(false);
+        bottomPanel.setVisible(false);
+        shotsToCompleteGame = 0;
+        shotsRemaining = getSelectedDifficulty()==1?45:getSelectedDifficulty()==2?35:25;
+        gridSolution = JeuUtils.genererGrilleSolution().toCharArray();
+        setupGame();
+
+        gameStarted = true;
+    }
+
+
+    private void setupGame(){
+        if (gameStarted){
+            resetGrid();
+        }
+        gamePanel.setBackground(Color.red);
+        gamePanel.setBounds(0, HEIGHT_FRAME/4, WIDTH_FRAME, HEIGHT_FRAME-(HEIGHT_FRAME/4));
+        grid.setLayout(new GridLayout(ROWS, COLS));
+        grid.setBounds(0, 0, 300, 300);
+
+        Integer position = 0;
+        for (int row = 0; row < buttonGrid.length; row++) {
+            for (int col = 0; col < buttonGrid[row].length; col++) {
+                buttonGrid[row][col] = new JButton();
+                buttonGrid[row][col].setVisible(true);
+                buttonGrid[row][col].addActionListener(eventListener);
+                grid.add(buttonGrid[row][col]);
+
+                arraySolution[row][col] = gridSolution[position];
+                position++;
+            }
+        }
+
+        gamePanel.add(grid);
+        frame.add(gamePanel);
+        //get total shot to complete the game
+        for (int i = 0, x = 0; i < gridSolution.length; i++){
+            if(gridSolution[i]=='B'){
+                shotsToCompleteGame++;
+            }
+        }
+    }
+
     //action event
     private void eventDispatcher(ActionEvent e){
         if (e.getSource() == playBtn || e.getSource() == playerName){
@@ -210,7 +265,7 @@ public class BatailleNavale {
             for (int row = 0; row < buttonGrid.length; row++) {
                 for (int col = 0; col < buttonGrid[row].length; col++) {
                     if (buttonGrid[row][col] == e.getSource()) {
-                        checkHit(position, buttonGrid[row][col]);
+                        checkHit(position, buttonGrid[row][col], row, col);
                     }
                     position++;
                 }
@@ -218,47 +273,12 @@ public class BatailleNavale {
         }
     }
 
-    private void launchGame(){
-        infoBox.setText(getPlayerName()+", éxécutez votre premier tir.");
-        infoBox.setVisible(true);
-        middlePanel.setVisible(false);
-        bottomPanel.setVisible(false);
-        shotsRemaining = getSelectedDifficulty()==1?45:getSelectedDifficulty()==2?35:25;
-        setupGame();
-    }
-
-
-    private void setupGame(){
-        JPanel board = new JPanel(null);
-        gamePanel = new JPanel(null);
-        gamePanel.setBackground(Color.red);
-        gamePanel.setBounds(0, HEIGHT_FRAME/4, WIDTH_FRAME, HEIGHT_FRAME-(HEIGHT_FRAME/4));
-        board.setLayout(new GridLayout(8, 8));
-        board.setBounds(0, 0, 300, 300);
-
-        for (int row = 0; row < buttonGrid.length; row++) {
-            for (int col = 0; col < buttonGrid[row].length; col++) {
-                buttonGrid[row][col] = new JButton();
-                buttonGrid[row][col].addActionListener(eventListener);
-                board.add(buttonGrid[row][col]);
-            }
-        }
-
-        gamePanel.add(board);
-        frame.add(gamePanel);
-        gridSolution = JeuUtils.genererGrilleSolution().toCharArray();
-        for (int i = 0; i < gridSolution.length; i++){
-            if(gridSolution[i]=='B'){
-                shotsToCompleteGame++;
-            }
-        }
-    }
-
-    private void checkHit(Integer position, JButton currentButton){
+    private void checkHit(Integer position, JButton currentButton, Integer row, Integer col){
+        println(shotsRemaining);
         if(position <= gridSolution.length){
             if(shotsRemaining < shotsToCompleteGame){
                 JOptionPane.showMessageDialog(frame, "Il ne reste plus assez de coup pour gagné la partie:(");
-                launchGame();
+                infoBox.setText("Vous avez perdu!");
             }
             Character find = gridSolution[position];
             if(find.equals('B')){
@@ -266,9 +286,10 @@ public class BatailleNavale {
                 currentButton.setBackground(Color.cyan);
                 currentButton.setOpaque(true);
                 infoBox.setText("Tir réussi!");
+
                 shotsToCompleteGame--;
             }else if (find.equals('Z')){
-                println("redondant");
+                infoBox.setText("Tir redondant!");
             }else {
                 currentButton.setText("X");
                 infoBox.setText("Tir manqué!");
@@ -276,6 +297,26 @@ public class BatailleNavale {
             gridSolution[position] = 'Z';
         }
         shotsRemaining--;
+    }
+
+    private void shipName(Integer row, Integer col){
+        String b1 = "cuirasse";
+        String b2 = "croiseur";
+        String b3 = "sous-marin";
+        String b4 = "destroyer";
+        println(arraySolution[row][col]);
+
+    }
+
+    private void resetGrid(){
+        for (int row = 0; row < buttonGrid.length; row++) {
+            for (int col = 0; col < buttonGrid[row].length; col++) {
+                if(buttonGrid[row][col] != null){
+                    buttonGrid[row][col].setVisible(false);
+                    grid.remove(buttonGrid[row][col]);
+                }
+            }
+        }
     }
 
 
