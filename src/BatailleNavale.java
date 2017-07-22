@@ -1,17 +1,14 @@
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import com.sun.xml.internal.fastinfoset.util.CharArray;
-
 import javax.swing.*;
-import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Created by DavidBoutet on 17-07-10.
+ * Cette classe, est un jeu de bataille navale avec une interface swing
+ * Code permanent: BOUD31109107
+ * date: 22 juillet 2017
+ * version: 1.0.0
  */
 public class BatailleNavale {
     //constant
@@ -41,7 +38,9 @@ public class BatailleNavale {
     //frame
     private JFrame frame;
     private char[] gridSolution;
-    private char[][] arraySolution = new char[ROWS][COLS];
+    private ArrayList<String> arraySolution = new ArrayList<String>();
+    private ArrayList<String> coordHorizontalBoats = new ArrayList<String>();
+    private ArrayList<String> coordVerticalBoats = new ArrayList<String>();
     private Integer shotsRemaining = 0;
     private Integer shotsToCompleteGame = 0;
     private Boolean gameStarted = false;
@@ -51,11 +50,13 @@ public class BatailleNavale {
             middlePanel,
             bottomPanel,
             gamePanel,
-            grid = new JPanel(null);
+            grid = new JPanel(null),
+            statusPanel = new JPanel(null);
 
     //button
     private JButton playBtn;
     private JButton[][] buttonGrid = new JButton[ROWS][COLS];
+    private JButton quitBtn;
 
     //radio button
     private JRadioButton btnRadio1 = new JRadioButton("Débutant"),
@@ -67,6 +68,7 @@ public class BatailleNavale {
 
     //label
     private JLabel infoBox;
+    private JLabel statusLabel;
 
     //textfield
     private JTextField playerName;
@@ -78,11 +80,14 @@ public class BatailleNavale {
             eventDispatcher(evenement);
         }
     };
-
+    //constructor
     public BatailleNavale(){
 
     }
 
+    /**
+     * Methode init game qui initialise le frame du jeu.
+     * */
     public void initGame(){
         frame = new JFrame("BATTLESHIP!");
         frame.setSize(WIDTH_FRAME, HEIGHT_FRAME);
@@ -90,10 +95,16 @@ public class BatailleNavale {
         frame.setLocationRelativeTo(null);
         frame.setResizable(false);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setBackground(Color.gray);
         launchMenu();
     }
 
     //launch first page
+
+    /**
+     * methode qui initialise le menu principale, page d'accueil
+     * prend aucun parametre
+     */
     private void launchMenu(){
         JPanel topPanel = topPanel(),
                middlePanel = middlePanel(),
@@ -107,6 +118,13 @@ public class BatailleNavale {
     }
 
     //top panel
+
+    /**
+     * methode qui initialise le premier panneau de 4 celui en position 0,0
+     * elle y ajoute la difficulté et le bouton pour initialiser la partie
+     * elle ajoute aussi un espace pour les messages d'information
+     *
+     */
     private JPanel topPanel(){
         topPanel = new JPanel(null);
         JLabel difficulty = new JLabel("Niveau: ");
@@ -163,6 +181,11 @@ public class BatailleNavale {
     }
 
     //middle panel
+
+    /**
+     *
+     * ajoute au panneau central le logo ascii
+     */
     private JPanel middlePanel(){
         middlePanel = new JPanel(null);
         middlePanel.setBackground(Color.white);
@@ -176,6 +199,9 @@ public class BatailleNavale {
         return middlePanel;
     }
 
+    /**
+     * ajoute au panneau du bas un champ textfield pour inscrire le nom du joueur.
+     */
     //bottom panel
     private JPanel bottomPanel(){
         bottomPanel = new JPanel(null);
@@ -196,15 +222,35 @@ public class BatailleNavale {
     }
 
     //return selected difficulty
+
+    /**
+     * methode qui retourne la difficiulté choisi par le joueur
+     * 1 = debutant
+     * 2 = intermediaire
+     * 3 = expert
+     * @return Integer
+     */
     private Integer getSelectedDifficulty(){
         return btnRadio1.isSelected()?1:btnRadio2.isSelected()?2:btnRadio3.isSelected()?3:0;
     }
 
     //return player name
+
+    /**
+     * methode qui retourne le nom du joueur
+     * @return String nomDuJoueur
+     */
     private String getPlayerName(){
-        return playerName.getText();
+        return playerName.getText().toUpperCase();
     }
 
+    /**
+     * la methode cache le panneau du milieu et celui du bas pour laisse la place a la grille de jeu
+     * methode qui indique au joueur d'effectuer son premier tir
+     * intitialise le nombre de coup possible pour le joueur selon la difficulté choisi
+     * genere la grille de solution
+     * appel la methode setupGame()
+     */
     private void launchGame(){
         gamePanel = new JPanel(null);
         infoBox.setText(getPlayerName()+", éxécutez votre premier tir.");
@@ -215,35 +261,98 @@ public class BatailleNavale {
         shotsRemaining = getSelectedDifficulty()==1?45:getSelectedDifficulty()==2?35:25;
         gridSolution = JeuUtils.genererGrilleSolution().toCharArray();
         setupGame();
+        getCoordsBoats();
+        setupBoatsName();
 
         gameStarted = true;
     }
 
 
+    /**
+     * methode qui met en place la grille et ajoute les buttons a celle-ci avec les evenement liés
+     * ajoute le nombre de coup restant au joueur
+     * ajoute les bateaux a couler
+     * ajoute le bouton quitter dans le bas de la fenetre
+     * initialise la variable shotsToCompleteGame pour savoir combien de coup il reste avant d'avoir gagné la partie
+     */
     private void setupGame(){
+        // reset if game already start
         if (gameStarted){
             resetGrid();
         }
-        gamePanel.setBackground(Color.red);
+        gamePanel.setBackground(Color.lightGray);
         gamePanel.setBounds(0, HEIGHT_FRAME/4, WIDTH_FRAME, HEIGHT_FRAME-(HEIGHT_FRAME/4));
-        grid.setLayout(new GridLayout(ROWS, COLS));
-        grid.setBounds(0, 0, 300, 300);
+        grid.setLayout(new GridLayout(ROWS, COLS, -1, -1));
+        grid.setBorder(BorderFactory.createEmptyBorder(2,2,2,2));
 
+        grid.setBounds(20, 20, 300, 300);
+        grid.setBorder(BorderFactory.createLineBorder(Color.black));
+
+        //panel beside the grid
+        statusPanel.setBounds(grid.getX()+grid.getWidth()+30, grid.getY(), 230, 300);
+        statusPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+
+        //label for remaining ammo
+        statusLabel = new JLabel("", SwingConstants.CENTER);
+        statusLabel.setOpaque(true);
+        statusLabel.setBounds(0, 0, 230, 40);
+        statusLabel.setForeground(Color.black);
+        statusLabel.setVisible(true);
+        statusLabel.setText("Réserve de munitions: \n" + shotsRemaining);
+        statusPanel.add(statusLabel);
+
+        //boats status
+        JLabel b1 = new JLabel("CUIRASSE", SwingConstants.CENTER);
+        JLabel b2 = new JLabel("CROISSEUR", SwingConstants.CENTER);
+        JLabel b3 = new JLabel("SOUS-MARIN", SwingConstants.CENTER);
+        JLabel b4 = new JLabel("DESTROYER", SwingConstants.CENTER);
+
+        b1.setBounds(0, 90, 230, 40);
+        b2.setBounds(0, b1.getY()+50, b1.getWidth(), b1.getHeight());
+        b3.setBounds(0, b2.getY()+50, b1.getWidth(), b1.getHeight());
+        b4.setBounds(0, b3.getY()+50, b1.getWidth(), b1.getHeight());
+
+        b1.setForeground(Color.lightGray);
+        b2.setForeground(Color.lightGray);
+        b3.setForeground(Color.lightGray);
+        b4.setForeground(Color.lightGray);
+
+        statusPanel.add(b1);
+        statusPanel.add(b2);
+        statusPanel.add(b3);
+        statusPanel.add(b4);
+
+        //quit button
+        quitBtn = new JButton("Quitter");
+        quitBtn.setBounds((gamePanel.getWidth()/2)-(60/2), gamePanel.getHeight()-100, 100, 30);
+        quitBtn.setForeground(Color.cyan);
+        quitBtn.setVisible(true);
+        quitBtn.addActionListener(eventListener);
+
+
+
+        //add buttons to grid
         Integer position = 0;
         for (int row = 0; row < buttonGrid.length; row++) {
             for (int col = 0; col < buttonGrid[row].length; col++) {
                 buttonGrid[row][col] = new JButton();
                 buttonGrid[row][col].setVisible(true);
                 buttonGrid[row][col].addActionListener(eventListener);
+                buttonGrid[row][col].setBorder(BorderFactory.createLineBorder(Color.BLACK));
                 grid.add(buttonGrid[row][col]);
 
-                arraySolution[row][col] = gridSolution[position];
+                if(gridSolution[position]=='B'){
+                    arraySolution.add(row+"-"+col);
+                }
                 position++;
             }
         }
 
         gamePanel.add(grid);
+        gamePanel.add(quitBtn);
+        gamePanel.add(statusPanel);
         frame.add(gamePanel);
+
         //get total shot to complete the game
         for (int i = 0, x = 0; i < gridSolution.length; i++){
             if(gridSolution[i]=='B'){
@@ -253,6 +362,10 @@ public class BatailleNavale {
     }
 
     //action event
+    /**
+     * cette methode gere les differents click sur l'interface
+     * @param e actionEvent ayant créer l'action
+     */
     private void eventDispatcher(ActionEvent e){
         if (e.getSource() == playBtn || e.getSource() == playerName){
             if((getPlayerName().length() >= 3 && getPlayerName().length() <= 10) && getSelectedDifficulty() != 0){
@@ -260,6 +373,8 @@ public class BatailleNavale {
             }else {
                 JOptionPane.showMessageDialog(frame, "Nom obligatoire et doit contenir entre 3 et 10 caractères inclusivement.");
             }
+        }else if(e.getSource() == quitBtn){
+            quitGame();
         }else{
             int position = 0;
             for (int row = 0; row < buttonGrid.length; row++) {
@@ -273,13 +388,15 @@ public class BatailleNavale {
         }
     }
 
+    /**
+     * methode qui gere le clic sur un bouton de la grille
+     * @param position position entre 1 et 64
+     * @param currentButton le boutton qui a été cliquer
+     * @param row la rangé du boutton actuellement cliquer
+     * @param col la colone du boutton actuellement cliquer
+     */
     private void checkHit(Integer position, JButton currentButton, Integer row, Integer col){
-        println(shotsRemaining);
         if(position <= gridSolution.length){
-            if(shotsRemaining < shotsToCompleteGame){
-                JOptionPane.showMessageDialog(frame, "Il ne reste plus assez de coup pour gagné la partie:(");
-                infoBox.setText("Vous avez perdu!");
-            }
             Character find = gridSolution[position];
             if(find.equals('B')){
                 currentButton.setText("B");
@@ -297,18 +414,23 @@ public class BatailleNavale {
             gridSolution[position] = 'Z';
         }
         shotsRemaining--;
+        statusLabel.setText("Réserve de munitions: "+ shotsRemaining);
+        if(shotsRemaining < shotsToCompleteGame){
+            JOptionPane.showMessageDialog(frame, "Il ne reste plus assez de coup pour gagné la partie:(");
+            infoBox.setText(getPlayerName()+ " vous avez perdu!");
+        }
+        if(shotsToCompleteGame == 0){
+            JOptionPane.showMessageDialog(frame, "Félicitation "+getPlayerName()+" vous avez gagné la partie");
+            infoBox.setText(getPlayerName()+ " vous avez gagné!");
+        }
     }
 
-    private void shipName(Integer row, Integer col){
-        String b1 = "cuirasse";
-        String b2 = "croiseur";
-        String b3 = "sous-marin";
-        String b4 = "destroyer";
-        println(arraySolution[row][col]);
-
-    }
-
+    /**
+     * methode qui remet supprime les boutons de la grille
+     * et supprime le panneau de status pour les coups restant
+     */
     private void resetGrid(){
+        statusPanel.remove(statusLabel);
         for (int row = 0; row < buttonGrid.length; row++) {
             for (int col = 0; col < buttonGrid[row].length; col++) {
                 if(buttonGrid[row][col] != null){
@@ -319,9 +441,82 @@ public class BatailleNavale {
         }
     }
 
+    /**
+     * methode qui donne les coordonné des bateaux horizontal et vertical
+     * dans les variables coordHorizontalBoats et coordVerticalBoats
+     */
+    private void getCoordsBoats(){
+        ArrayList<String> listToRemove = new ArrayList<String>();
+        for (int i = 0; i < arraySolution.size(); i++) {
+            String[] splitValue = arraySolution.get(i).split("-");
+            String[] previousValue;
+            String[] nextValue;
 
+            if(i > 0){
+                previousValue = arraySolution.get(i-1).split("-");
+            }else{
+                previousValue = splitValue;
+            }
+            if (i < arraySolution.size() - 1){
+                nextValue = arraySolution.get(i+1).split("-");
+            }else {
+                nextValue = splitValue;
+            }
 
-    public static void println(Object o){
-        System.out.println(o);
+            Integer previousRow = Integer.parseInt(previousValue[0]); //vertical
+            Integer previousCol = Integer.parseInt(previousValue[1]); //horizontal
+            Integer currentRow = Integer.parseInt(splitValue[0]);
+            Integer currentCol = Integer.parseInt(splitValue[1]);
+            Integer nextRow = Integer.parseInt(nextValue[0]);
+            Integer nextCol = Integer.parseInt(nextValue[1]);
+
+            if((currentRow.equals(nextRow) || currentRow.equals(previousRow)) &&
+                    (currentCol.equals(nextCol-1) || currentCol.equals(previousCol+1))){
+                listToRemove.add(arraySolution.get(i));
+            }
+        }
+        coordHorizontalBoats = listToRemove;
+        arraySolution.removeAll(listToRemove);
+        coordVerticalBoats = arraySolution;
+    }
+
+    /**
+     * methode incomplete qui avait pour but de recuperer les grandeurs pour chaque bateau
+     */
+    private void setupBoatsName(){
+        for(int i = 0; i < coordHorizontalBoats.size(); i++){
+            Integer positionSuivante = null;
+            Integer position = Integer.parseInt(coordHorizontalBoats.get(i).split("-")[1]);
+
+            if(i+2 <= coordHorizontalBoats.size()){
+                positionSuivante = Integer.parseInt(coordHorizontalBoats.get(i+1).split("-")[1]);
+            }else {
+                positionSuivante = null;
+            }
+            if(positionSuivante != null){
+                if(position.equals(positionSuivante-1)){
+//                    println("ajouter dans array");
+                }else {
+//                    println("new array");
+                }
+            }else {
+//                println("ajouter le dernier au meme array");
+            }
+        }
+    }
+
+    /**
+     * methode qui quitte la partie actuelle et ramene vers la premiere page
+     * pour commencer une nouvelle partie
+     */
+    private void quitGame(){
+        resetGrid();
+        gamePanel.setVisible(false);
+        topPanel.setVisible(true);
+        middlePanel.setVisible(true);
+        bottomPanel.setVisible(true);
+        playerName.setText("");
+        playerName.requestFocusInWindow();
+        gameStarted = false;
     }
 }
